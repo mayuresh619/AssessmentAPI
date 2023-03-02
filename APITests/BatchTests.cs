@@ -37,7 +37,7 @@ namespace APITests
         #region Batch Method Tests
 
         [Test]
-        public void Batch_ReturnsAGuid_WhenBatchRequestIsSent()
+        public void Batch_WhenBatchRequestIsSent_ReturnsAGuid()
         {
             //Arrange
             var _businessUnit = "IT";
@@ -72,7 +72,7 @@ namespace APITests
         }
 
         [Test]
-        public void Batch_ReturnsBadRequest_WhenEmptyRequest()
+        public void Batch_WhenEmptyRequest_ReturnsBadRequest()
         {
             //Arrange
             var _businessUnit = "IT";
@@ -89,7 +89,7 @@ namespace APITests
         }
 
         [Test]
-        public void Batch_ReturnsBadRequest_WhenInvalidBusinessUnitIsPassed()
+        public void Batch_WhenInvalidBusinessUnitIsPassed_ReturnsBadRequest()
         {
             //Arrange
             var _businessUnit = "IT";
@@ -124,7 +124,7 @@ namespace APITests
         }
 
         [Test]
-        public void Batch_ReturnsAGuid_WhenBatchRequestAttribbutesAreNull()
+        public void Batch_WhenBatchRequestAttribbutesAreNull_ReturnsAGuid()
         {
             //Arrange
             var _businessUnit = "IT";
@@ -155,7 +155,7 @@ namespace APITests
         }
 
         [Test]
-        public void Batch_ReturnsBadRequest_WhenAttributtesKeyValueAreNull()
+        public void Batch_WhenAttributtesKeyValueAreNull_ReturnsBadRequest()
         {
             //Arrange
             var _businessUnit = "IT";
@@ -188,7 +188,7 @@ namespace APITests
         }
 
         [Test]
-        public void Batch_ReturnsBadRequest_WhenAttributtesKeyIsEmpty()
+        public void Batch_WhenAttributtesKeyIsEmpty_ReturnsBadRequest()
         {
             //Arrange
             var _businessUnit = "IT";
@@ -223,7 +223,7 @@ namespace APITests
         }
 
         [Test]
-        public void Batch_ReturnsBadRequest_WhenAttributtesValueIsEmpty()
+        public void Batch_WhenAttributtesValueIsEmpty_ReturnsBadRequest()
         {
             //Arrange
             var _businessUnit = "IT";
@@ -258,7 +258,7 @@ namespace APITests
         }
 
         [Test]
-        public void Batch_ReturnsBadRequest_WhenAttributtesValueIsNull()
+        public void Batch_WhenAttributtesValueIsNull_ReturnsBadRequest()
         {
             //Arrange
             var _businessUnit = "IT";
@@ -293,7 +293,7 @@ namespace APITests
         }
 
         [Test]
-        public void Batch_ReturnsBadRequest_WhenAttributtesKeyIsNull()
+        public void Batch_WhenAttributtesKeyIsNull_ReturnsBadRequest()
         {
             //Arrange
             var _businessUnit = "IT";
@@ -328,7 +328,7 @@ namespace APITests
         }
 
         [Test]
-        public void Batch_ThrowsException_WhenCreateBatchThrowsException()
+        public void Batch_WhenCreateBatchThrowsException_ThrowsException()
         {
             //Arrange
             var _businessUnit = "IT";
@@ -361,7 +361,7 @@ namespace APITests
         }
 
         [Test]
-        public void Batch_ThrowsException_WhenValidateBusinessUnitThrowsException()
+        public void Batch_WhenValidateBusinessUnitThrowsException_ThrowsException()
         {
             //Arrange
             var _businessUnit = "IT";
@@ -395,7 +395,7 @@ namespace APITests
         #region GetBatchDetails Method Tests
 
         [Test]
-        public void GetBatchDetails_ReturnsBatchDetails_WhenValidBatchIdIsPassed()
+        public void GetBatchDetails_WhenValidBatchIdIsPassed_ReturnsBatchDetails()
         {
             //Arrange
             var _guid = Guid.NewGuid();
@@ -421,7 +421,7 @@ namespace APITests
         }
 
         [Test]
-        public void GetBatchDetails_ReturnsNotFound_WhenInvalidBatchIdIsPassed()
+        public void GetBatchDetails_WhenInvalidBatchIdIsPassed_ReturnsNotFound()
         {
             //Arrange
             var _guid = Guid.NewGuid();
@@ -443,7 +443,7 @@ namespace APITests
         }
 
         [Test]
-        public void GetBatchDetails_ReturnsGone_WhenValidBatchIsExpired()
+        public void GetBatchDetails_WhenValidBatchIsExpired_ReturnsGone()
         {
             //Arrange
             var _guid = Guid.NewGuid();
@@ -466,7 +466,7 @@ namespace APITests
         }
 
         [Test]
-        public void GetBatchDetails_ThrowsException_WhenValidBatchIsExpiredButGoneConditionIsTrue()
+        public void GetBatchDetails_WhenValidBatchIsExpiredButGoneConditionIsTrue_ThrowsException()
         {
             //Arrange
             var _guid = Guid.NewGuid();
@@ -489,7 +489,7 @@ namespace APITests
         }
 
         [Test]
-        public void GetBatchDetails_ThrowsException_WhenGetBatchDetailsThrowsExceptions()
+        public void GetBatchDetails_WhenGetBatchDetailsThrowsExceptions_ThrowsException()
         {
             //Arrange
             var _guid = Guid.NewGuid();
@@ -510,6 +510,199 @@ namespace APITests
             //Assert
             Assert.IsNotNull(ex);
             Assert.That(ex.Message, Is.EqualTo("Fake Exception"));
+        }
+        #endregion
+
+        #region AddFiles Method Tests
+       
+        [Test]
+        public void AddFiles_WhenValidBatchDetailsArePassed_Returns201StatusCode()
+        {
+            //Arrange
+            var _guid = Guid.NewGuid();
+            var _fileName = "TestFile.pdf";
+            var _mimeType = "application/octet-stream";
+            var _contentSize = 1024;
+
+            A.CallTo(() => _fakeBatchService.IsValidFilename(_fileName)).Returns(true);
+            A.CallTo(() => _fakeBatchService.ValidateBatchID(_guid)).Returns(StatusCodes.Status200OK);
+            A.CallTo(() => _fakeBatchService.UploadFileToContainer(_guid.ToString(),_fileName)).Returns(true);
+            A.CallTo(() => _fakeBatchService.AddFileDetails(_guid.ToString(),_fileName,_mimeType,_contentSize)).Returns(true);
+
+            //Act
+            var result = (StatusCodeResult)_controller.AddFiles(_guid, _fileName, _mimeType, _contentSize);
+
+            //Assert
+            A.CallTo(() => _fakeBatchService.UploadFileToContainer(_guid.ToString(), _fileName)).MustHaveHappened().Then(
+            A.CallTo(() => _fakeBatchService.AddFileDetails(_guid.ToString(), _fileName, _mimeType, _contentSize)).MustHaveHappened());
+            Assert.IsNotNull(result);
+            Assert.AreEqual(StatusCodes.Status201Created, result.StatusCode);
+        }
+
+        [Test]
+        public void AddFiles_WhenFileNameIsEmpty_Returns400StatusCode()
+        {
+            //Arrange
+            var _guid = Guid.NewGuid();
+            var _fileName = "";
+            var _mimeType = "application/octet-stream";
+            var _contentSize = 1024;
+
+            A.CallTo(() => _fakeBatchService.IsValidFilename(_fileName)).Returns(true);
+            A.CallTo(() => _fakeBatchService.ValidateBatchID(_guid)).Returns(StatusCodes.Status200OK);
+
+            //Act
+            var result = (BadRequestObjectResult)_controller.AddFiles(_guid, _fileName, _mimeType, _contentSize);
+
+            //Assert
+            A.CallTo(() => _fakeBatchService.UploadFileToContainer(_guid.ToString(), _fileName)).MustNotHaveHappened();
+            A.CallTo(() => _fakeBatchService.AddFileDetails(_guid.ToString(), _fileName, _mimeType, _contentSize)).MustNotHaveHappened();
+            Assert.IsNotNull(result);
+            Assert.AreEqual(StatusCodes.Status400BadRequest, result.StatusCode);
+            Assert.IsInstanceOf(typeof(ErrorResponse), result.Value);
+            Assert.AreEqual(BatchConstants.INVALID_FILE_NAME, ((ErrorResponse)result.Value).Errors.FirstOrDefault().Description);
+        }
+
+        [Test]
+        public void AddFiles_WhenFileNameIsInvalid_Returns400StatusCode()
+        {
+            //Arrange
+            var _guid = Guid.NewGuid();
+            var _fileName = "abc/asdmf.c";
+            var _mimeType = "application/octet-stream";
+            var _contentSize = 1024;
+
+            //Act
+            var result = (BadRequestObjectResult)_controller.AddFiles(_guid, _fileName, _mimeType, _contentSize);
+
+            //Assert
+            A.CallTo(() => _fakeBatchService.ValidateBatchID(_guid)).MustNotHaveHappened();
+            A.CallTo(() => _fakeBatchService.UploadFileToContainer(_guid.ToString(), _fileName)).MustNotHaveHappened();
+            A.CallTo(() => _fakeBatchService.AddFileDetails(_guid.ToString(), _fileName, _mimeType, _contentSize)).MustNotHaveHappened();
+            Assert.IsNotNull(result);
+            Assert.AreEqual(StatusCodes.Status400BadRequest, result.StatusCode);
+            Assert.IsInstanceOf(typeof(ErrorResponse), result.Value);
+            Assert.AreEqual(BatchConstants.INVALID_FILE_NAME, ((ErrorResponse)result.Value).Errors.FirstOrDefault().Description);
+        }
+
+        [Test]
+        public void AddFiles_WhenInValidBatchIdIsPassed_Returns404StatusCode()
+        {
+            //Arrange
+            var _guid = Guid.NewGuid();
+            var _fileName = "TestFile.pdf";
+            var _mimeType = "application/octet-stream";
+            var _contentSize = 1024;
+
+            A.CallTo(() => _fakeBatchService.IsValidFilename(_fileName)).Returns(true);
+            A.CallTo(() => _fakeBatchService.ValidateBatchID(_guid)).Returns(StatusCodes.Status404NotFound);
+
+
+            //Act
+            var result = (NotFoundResult)_controller.AddFiles(_guid, _fileName, _mimeType, _contentSize);
+
+            //Assert
+            A.CallTo(() => _fakeBatchService.ValidateBatchID(_guid)).MustHaveHappened();
+            A.CallTo(() => _fakeBatchService.UploadFileToContainer(_guid.ToString(), _fileName)).MustNotHaveHappened();
+            A.CallTo(() => _fakeBatchService.AddFileDetails(_guid.ToString(), _fileName, _mimeType, _contentSize)).MustNotHaveHappened();
+            Assert.IsNotNull(result);
+            Assert.AreEqual(StatusCodes.Status404NotFound, result.StatusCode);
+        }
+
+        [Test]
+        public void AddFiles_WhenBatchIsExpired_Returns404StatusCode()
+        {
+            //Arrange
+            var _guid = Guid.NewGuid();
+            var _fileName = "TestFile.pdf";
+            var _mimeType = "application/octet-stream";
+            var _contentSize = 1024;
+
+            A.CallTo(() => _fakeBatchService.IsValidFilename(_fileName)).Returns(true);
+            A.CallTo(() => _fakeBatchService.ValidateBatchID(_guid)).Returns(StatusCodes.Status410Gone);
+
+            //Act
+            var result = (StatusCodeResult)_controller.AddFiles(_guid, _fileName, _mimeType, _contentSize);
+
+            //Assert
+            A.CallTo(() => _fakeBatchService.ValidateBatchID(_guid)).MustHaveHappened();
+            A.CallTo(() => _fakeBatchService.UploadFileToContainer(_guid.ToString(), _fileName)).MustNotHaveHappened();
+            A.CallTo(() => _fakeBatchService.AddFileDetails(_guid.ToString(), _fileName, _mimeType, _contentSize)).MustNotHaveHappened();
+            Assert.IsNotNull(result);
+            Assert.AreEqual(StatusCodes.Status410Gone, result.StatusCode);
+        }
+
+        [Test]
+        public void AddFiles_WhenFileAlreadyExistInBatch_Returns400StatusCode()
+        {
+            //Arrange
+            var _guid = Guid.NewGuid();
+            var _fileName = "TestFile.pdf";
+            var _mimeType = "application/octet-stream";
+            var _contentSize = 1024;
+
+            A.CallTo(() => _fakeBatchService.IsValidFilename(_fileName)).Returns(true);
+            A.CallTo(() => _fakeBatchService.ValidateBatchID(_guid)).Returns(StatusCodes.Status200OK);
+            A.CallTo(() => _fakeBatchService.UploadFileToContainer(_guid.ToString(), _fileName)).Returns(false);
+            A.CallTo(() => _fakeBatchService.AddFileDetails(_guid.ToString(), _fileName, _mimeType, _contentSize)).Returns(true);
+
+            //Act
+            var result = (BadRequestObjectResult)_controller.AddFiles(_guid, _fileName, _mimeType, _contentSize);
+
+            //Assert
+            A.CallTo(() => _fakeBatchService.IsValidFilename(_fileName)).MustHaveHappened();
+            A.CallTo(() => _fakeBatchService.ValidateBatchID(_guid)).MustHaveHappened();
+            A.CallTo(() => _fakeBatchService.UploadFileToContainer(_guid.ToString(), _fileName)).MustHaveHappened();
+            A.CallTo(() => _fakeBatchService.AddFileDetails(_guid.ToString(), _fileName, _mimeType, _contentSize)).MustNotHaveHappened();
+            Assert.IsNotNull(result);
+            Assert.AreEqual(StatusCodes.Status400BadRequest, result.StatusCode);
+            Assert.IsInstanceOf(typeof(ErrorResponse), result.Value);
+            Assert.AreEqual(BatchConstants.FILE_ALREADY_EXIST, ((ErrorResponse)result.Value).Errors.FirstOrDefault().Description);
+        }
+
+        [Test]
+        public void AddFiles_WhenUploadFileToContainerThrowsException_ThrowsException()
+        {
+            //Arrange
+            var _guid = Guid.NewGuid();
+            var _fileName = "TestFile.pdf";
+            var _mimeType = "application/octet-stream";
+            var _contentSize = 1024;
+
+            A.CallTo(() => _fakeBatchService.IsValidFilename(_fileName)).Returns(true);
+            A.CallTo(() => _fakeBatchService.ValidateBatchID(_guid)).Returns(StatusCodes.Status200OK);
+            A.CallTo(() => _fakeBatchService.UploadFileToContainer(_guid.ToString(), _fileName)).Throws(new NotSupportedException("Fake Exception"));
+
+            //Act
+            var ex = Assert.Throws<NotSupportedException>(() =>
+                _controller.AddFiles(_guid, _fileName, _mimeType, _contentSize));
+
+            //Assert
+            Assert.That(ex.Message, Is.EqualTo("Fake Exception"));
+
+        }
+
+        [Test]
+        public void AddFiles_WhenAddFileDetailsThrowsException_ThrowsException()
+        {
+            //Arrange
+            var _guid = Guid.NewGuid();
+            var _fileName = "TestFile.pdf";
+            var _mimeType = "application/octet-stream";
+            var _contentSize = 1024;
+
+            A.CallTo(() => _fakeBatchService.IsValidFilename(_fileName)).Returns(true);
+            A.CallTo(() => _fakeBatchService.ValidateBatchID(_guid)).Returns(StatusCodes.Status200OK);
+            A.CallTo(() => _fakeBatchService.UploadFileToContainer(_guid.ToString(), _fileName)).Returns(true);
+            A.CallTo(() => _fakeBatchService.AddFileDetails(_guid.ToString(), _fileName, _mimeType, _contentSize)).Throws(new NotSupportedException("Fake Exception"));
+
+            //Act
+            var ex = Assert.Throws<NotSupportedException>(() =>
+                _controller.AddFiles(_guid, _fileName, _mimeType, _contentSize));
+
+            //Assert
+            Assert.That(ex.Message, Is.EqualTo("Fake Exception"));
+
         }
         #endregion
     }

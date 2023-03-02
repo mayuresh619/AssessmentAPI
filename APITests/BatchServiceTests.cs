@@ -41,7 +41,7 @@ namespace APITests
 
         #region ValidateBusinessUnit Method Tests
         [Test]
-        public void ValidateBusinessUnit_ReturnsFalse_WhenInvalidBusinessNameIsPassed()
+        public void ValidateBusinessUnit_WhenInvalidBusinessNameIsPassed_ReturnsFalse()
         {
             //Arrange
             var _businessUnit = "Abc";
@@ -55,7 +55,7 @@ namespace APITests
         }
 
         [Test]
-        public void ValidateBusinessUnit_ReturnsFalse_WhenValidBusinessNameIsPassed()
+        public void ValidateBusinessUnit_WhenValidBusinessNameIsPassed_ReturnsFalse()
         {
             //Arrange
             var _businessUnit = "IT";
@@ -73,7 +73,7 @@ namespace APITests
         #region GetBatchDetails Method Tests
 
         [Test]
-        public void GetBatchDetails_ReturnsBatchDetails_WhenValidBatchIdIsPassed()
+        public void GetBatchDetails_WhenValidBatchIdIsPassed_ReturnsBatchDetails()
         {
             //Arrange
             var _batchID = Guid.Parse("27af1e01-ad1d-48df-946e-ec2b2332a4f1");
@@ -91,7 +91,7 @@ namespace APITests
         }
 
         [Test]
-        public void GetBatchDetails_ThrowsException_WhenInvalidBatchIdIsPassed()
+        public void GetBatchDetails_WhenInvalidBatchIdIsPassed_ThrowsException()
         {
             //Arrange
             var _batchID = Guid.Parse("27af1e01-ad1d-48df-946e-ec2b2332a4f2");
@@ -108,7 +108,7 @@ namespace APITests
         #region ValidateBatchID Method Tests
 
         [Test]
-        public void ValidateBatchID_Returns200Status_WhenValidBatchIdIsPassed()
+        public void ValidateBatchID_WhenValidBatchIdIsPassed_Returns200Status()
         {
             //Arrange
             var _batchID = Guid.Parse("27af1e01-ad1d-48df-946e-ec2b2332a4f1");
@@ -121,7 +121,7 @@ namespace APITests
         }
 
         [Test]
-        public void ValidateBatchID_Returns404Status_WhenInvalidBatchIdIsPassed()
+        public void ValidateBatchID_WhenInvalidBatchIdIsPassed_Returns404Status()
         {
             //Arrange
             var _batchID = Guid.Parse("27af1e01-ad1d-48df-946e-ec2b2332a4f2");
@@ -134,7 +134,7 @@ namespace APITests
         }
 
         [Test]
-        public void ValidateBatchID_Returns410Status_WhenBatchIsExpired()
+        public void ValidateBatchID_WhenBatchIsExpired_Returns410Status()
         {
             //Arrange
             var _batchID = Guid.Parse("2d708bc6-8494-4ea4-b632-2da049ef7e9a");
@@ -150,7 +150,7 @@ namespace APITests
         #region CreateBatch Method Tests
 
         [Test]
-        public void CreateBatch_ReturnGuid_WhenValidBatchRequestIsPassed()
+        public void CreateBatch_WhenValidBatchRequestIsPassed_ReturnGuid()
         {
             //Arrange
             var _batchRequest = new BatchRequest();
@@ -170,6 +170,35 @@ namespace APITests
 
         #endregion
 
+        #region IsValidFileName Method Tests
+        [Test]
+        public void IsValidFilename_WhenFileNameIsValid_ReturnsTrue()
+        {
+            //Arrange
+            var _fileName = "TestFile.pdf";
+
+            //Act
+            var result = _batchService.IsValidFilename(_fileName);
+
+            //Assert
+            Assert.IsTrue(result);
+        }
+
+        [Test]
+        public void IsValidFilename_WhenFileNameIsInvalid_ReturnsFalse()
+        {
+            //Arrange
+            var _fileName = "Test/as@File.pdf";
+
+            //Act
+            var result = _batchService.IsValidFilename(_fileName);
+
+            //Assert
+            Assert.IsFalse(result);
+        }
+        #endregion
+
+
         #region Teardown Method
         [TearDown]
         public void BatchServiceTearDown()
@@ -187,7 +216,7 @@ namespace APITests
         private IConfiguration InitConfiguration()
         {
             var config = new ConfigurationBuilder()
-               .AddJsonFile("appsettings.json")
+               .AddJsonFile("appsettings.Test.json")
                 .AddEnvironmentVariables()
                 .Build();
             return config;
