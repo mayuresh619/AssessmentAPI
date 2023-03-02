@@ -7,7 +7,7 @@ namespace AssessmentAPI.Validators
     {
         public BatchResponseValidator()
         {
-            RuleFor(resp => resp.BatchId).NotNull().NotEmpty();
+            RuleFor(resp => resp.BatchId).NotNull().NotEmpty().WithMessage("Batch ID should not be null or empty");
         }
     }
 }

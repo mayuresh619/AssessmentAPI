@@ -11,6 +11,9 @@ using System.Text.Json.Serialization;
 using Newtonsoft.Json;
 using AssessmentAPI.DataLayer;
 using System.Net.NetworkInformation;
+using System.ComponentModel.DataAnnotations;
+using ValidationException = FluentValidation.ValidationException;
+using System.ComponentModel;
 
 namespace AssessmentAPI.Controllers
 {
@@ -25,6 +28,7 @@ namespace AssessmentAPI.Controllers
         private BatchResponseValidator _batchResponseValidator;
         private readonly ILogger _logger;
         private string _correlationId;
+        private ErrorResponse _errorResponse;
         #endregion
 
         #region Constructor
@@ -40,6 +44,7 @@ namespace AssessmentAPI.Controllers
             _validator = new BatchValidator();
             _batchDetailsValidator = new BatchDetailsResponseValidator();
             _batchResponseValidator = new BatchResponseValidator();
+            _errorResponse = new ErrorResponse();
         }
 
         #endregion
@@ -67,7 +72,7 @@ namespace AssessmentAPI.Controllers
                 _logger.LogInfo($"Execution of {nameof(BatchController)}.{nameof(Batch)} method begin",
                     ("Request object", JsonConvert.SerializeObject(batchRequest))
                     );
-                _validator.ValidateAndThrow(batchRequest);
+                _validator.ValidateAndThrow(batchRequest);  
 
                 if (!_batchService.ValidateBusinessUnit(batchRequest.BusinessUnit))
                 {
@@ -76,17 +81,15 @@ namespace AssessmentAPI.Controllers
                         ("Method Name", $"{nameof(BatchController)}.{nameof(Batch)}"),
                         ("Status Code", StatusCodes.Status400BadRequest.ToString())
                         );
-                    return BadRequest(new ErrorResponse
-                    {
-                        CorrelationId = _correlationId,
-                        Errors = new ErrorResponse.Error[]
-                        {
-                        new ErrorResponse.Error() {
-                            Source = $"{nameof(Batch)}",
-                            Description = BatchConstants.BUSINESS_UNIT_INVALID
-                        }
-                        }
-                    });
+                    _errorResponse.Errors = new ErrorResponse.Error[]
+                         {
+                         new ErrorResponse.Error() {
+                             Source = $"{nameof(Batch)}",
+                             Description = BatchConstants.BUSINESS_UNIT_INVALID
+                         }
+                        };
+                    _errorResponse.CorrelationId = _correlationId;
+                    return BadRequest(_errorResponse);
                 }
 
                 if (batchRequest.Attritubes != null)
@@ -97,19 +100,15 @@ namespace AssessmentAPI.Controllers
                         ("Method Name", $"{nameof(BatchController)}.{nameof(Batch)}"),
                         ("Status Code", StatusCodes.Status400BadRequest.ToString())
                         );
-
-                        return BadRequest(new ErrorResponse
-                        {
-                            CorrelationId = _correlationId,
-                            Errors = new ErrorResponse.Error[]
+                        _errorResponse.Errors = new ErrorResponse.Error[]
                             {
                                 new ErrorResponse.Error() {
                                     Source = $"{nameof(Batch)}",
                                     Description = BatchConstants.ATTRIBUTE_VALIDATION
                                 }
-                            }
-                        }
-                        );
+                            };
+                        _errorResponse.CorrelationId = _correlationId;
+                        return BadRequest(_errorResponse);
                     }
 
                     if (batchRequest.Attritubes.Any(i => string.IsNullOrWhiteSpace(i.Key) || string.IsNullOrWhiteSpace(i.Value)))
@@ -118,24 +117,23 @@ namespace AssessmentAPI.Controllers
                             ("Method Name", $"{nameof(BatchController)}.{nameof(Batch)}"),
                             ("Status Code", StatusCodes.Status400BadRequest.ToString())
                                 );
-                        return BadRequest(new ErrorResponse
-                        {
-                            CorrelationId = _correlationId,
-                            Errors = new ErrorResponse.Error[]
+                        _errorResponse.Errors = new ErrorResponse.Error[]
                             {
                                 new ErrorResponse.Error() {
                                     Source = $"{nameof(Batch)}",
                                     Description = BatchConstants.ATTRIBUTE_VALIDATION_KEY_VALUE
                                 }
-                            }
-                        }
-                        );
+                            };
+                        _errorResponse.CorrelationId = _correlationId;
+
+                        return BadRequest(_errorResponse);
                     }
                 }
 
                 var _guid = _batchService.CreateBatch(batchRequest);
                 var _batchResponse = new BatchResponse() { BatchId = _guid };
                 _batchResponseValidator.ValidateAndThrow(_batchResponse);
+                _batchService.CreateStorageContainer(_guid.ToString());
                 _logger.LogInfo($"Execution of {nameof(BatchController)}.{nameof(Batch)} method end",
                     ("Response object", JsonConvert.SerializeObject(_batchResponse)
                     ));
@@ -151,17 +149,15 @@ namespace AssessmentAPI.Controllers
                     ("Status Code", StatusCodes.Status400BadRequest.ToString())
                     );
 
-                return BadRequest(new ErrorResponse
-                {
-                    CorrelationId = _correlationId,
-                    Errors = new ErrorResponse.Error[]
+                _errorResponse.Errors = new ErrorResponse.Error[]
                             {
                                 new ErrorResponse.Error() {
                                     Source =ex.Source,
                                     Description = ex.Message
                                 }
-                            }
-                });
+                            };
+                _errorResponse.CorrelationId = _correlationId;
+                return BadRequest(_errorResponse);
             }
             catch (Exception ex)
             {
@@ -229,6 +225,113 @@ namespace AssessmentAPI.Controllers
             {
                 _logger.LogError(ex, $"Exception occured in {nameof(BatchController)}.{nameof(GetBatchDetails)}",
                     ("Batch Id", batchId.ToString())
+                    );
+                throw ex;
+            }
+        }
+
+        /// <summary>
+        /// Add a file to the batch
+        /// </summary>
+        /// <remarks>Creates a file in the batch. To upload the content of the file, one or more <code>uploadBlockOfFile</code> 
+        /// requests will need to be made followed by a 'putBlocksInFile' request to complete the file.</remarks>
+        /// <param name="batchId">A Batch ID</param>
+        /// <param name="filename">Filename for the new file. Must be unique in the batch (but can be same as another file 
+        /// in another batch). Filenames don't include a path.</param>
+        /// <param name="X_MIME_Type">Optional. The MIME content type of the file. The default type is application/octet-stream</param>
+        /// <param name="X_Content_Size">The final size of the file in bytes.</param>
+        /// <returns></returns>
+        /// <response code="201">Created</response>
+        /// <response code="400">Bad Request - Could be a batch ID; a batch ID that doesn't exist; a bad filename</response>
+        /// <response code="401">Unauthorised - either you have not provided any credentials, or your credentials are not recognised</response>
+        /// <response code="403">Forbidden - you have been authorised, but you are not allowed to access this resource</response>
+        [HttpPost]
+        [Route("/batch/{batchId}/{filename}")]
+        [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
+        [Produces("application/json")]
+        public IActionResult AddFiles(Guid batchId,string filename, [FromHeader] string X_MIME_Type, [FromHeader][Required] double X_Content_Size)
+        {
+            try
+            {
+                _logger.LogInfo($"Execution of {nameof(BatchController)}.{nameof(AddFiles)} method begin",
+                 ("Batch Id", batchId.ToString()),
+                 ("File Name", filename),
+                 ("X_MIME_Type", X_MIME_Type),
+                 ("X_Content_Size", X_Content_Size.ToString())
+                 );
+
+                if(string.IsNullOrEmpty(filename) || !_batchService.IsValidFilename(filename))
+                {
+                    _correlationId = _logger.LogWarning("Invalid file name",
+                        ("Batch ID", batchId.ToString()),
+                        ("File Name", filename)
+                        );
+                    _errorResponse.Errors = new ErrorResponse.Error[]
+                            {
+                                new ErrorResponse.Error() {
+                                    Source = $"{nameof(AddFiles)}",
+                                    Description = BatchConstants.INVALID_FILE_NAME
+                                }
+                            };
+                    _errorResponse.CorrelationId = _correlationId;
+                    return BadRequest(_errorResponse);
+                }
+                var _status = _batchService.ValidateBatchID(batchId);
+
+                if (_status == StatusCodes.Status404NotFound)
+                {
+                    _logger.LogWarning($"Batch not found",
+                        ("Batch Id", batchId.ToString()),
+                        ("Method Name", $"{nameof(BatchController)}.{nameof(GetBatchDetails)}"),
+                        ("Status Code", _status.ToString())
+                        );
+                    return NotFound();
+                }
+                else if (_status == StatusCodes.Status410Gone)
+                {
+                    _logger.LogWarning($"Batch is expired",
+                        ("Batch Id", batchId.ToString()),
+                        ("Method Name", $"{nameof(BatchController)}.{nameof(GetBatchDetails)}")
+                        );
+                    return StatusCode(StatusCodes.Status410Gone);
+                }
+
+                if (string.IsNullOrEmpty(X_MIME_Type) || string.IsNullOrWhiteSpace(X_MIME_Type))
+                {
+                    X_MIME_Type = BatchConstants.APPLICATION_OCTET_STREAM;
+                }
+
+                if (_batchService.UploadFileToContainer(batchId.ToString(), filename))
+                {
+                    _batchService.AddFileDetails(batchId.ToString(), filename, X_MIME_Type, X_Content_Size);
+                }
+                else
+                {
+                    _correlationId = _logger.LogWarning("File already exist for this batch",
+                        ("Batch ID", batchId.ToString()),
+                        ("File Name", filename)
+                        );
+                    _errorResponse.Errors = new ErrorResponse.Error[]
+                            {
+                                new ErrorResponse.Error() {
+                                    Source = $"{nameof(AddFiles)}",
+                                    Description = BatchConstants.FILE_ALREADY_EXIST
+                                }
+                            };
+                    _errorResponse.CorrelationId = _correlationId;
+                    return BadRequest(_errorResponse);
+                }
+
+                _logger.LogInfo($"Execution of {nameof(BatchController)}.{nameof(AddFiles)} method end");
+                return StatusCode(StatusCodes.Status201Created);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Exception occured in {nameof(BatchController)}.{nameof(GetBatchDetails)}",
+                    ("Batch Id", batchId.ToString()),
+                    ("File Name", filename),
+                    ("X_MIME_Type", X_MIME_Type),
+                    ("X_Content_Size", X_Content_Size.ToString())
                     );
                 throw ex;
             }

@@ -5,7 +5,12 @@ VisualStudioVersion = 17.4.33403.182
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AssessmentAPI", "AssessmentAPI.csproj", "{D5A83D67-14AC-420B-9090-E60A6C3E9708}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "APITests", "..\APITests\APITests.csproj", "{2018B41F-C386-4642-BEF0-2048D445B359}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "APITests", "..\APITests\APITests.csproj", "{2018B41F-C386-4642-BEF0-2048D445B359}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{55F993EB-F61F-4F47-ACED-431A28FA16A2}"
+	ProjectSection(SolutionItems) = preProject
+		.editorconfig = .editorconfig
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

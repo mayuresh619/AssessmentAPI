@@ -5,7 +5,9 @@
       "launchBrowser": true,
       "launchUrl": "swagger",
       "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "VaultUri": "https://assessmentapi-keyvault.vault.azure.net/",
+        "AZURE_USERNAME": "mayuresh.vedak619@gmail.com"
       }
     },
     "AssessmentAPI": {
@@ -13,7 +15,9 @@
       "launchBrowser": true,
       "launchUrl": "swagger",
       "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "VaultUri": "https://assessmentapi-keyvault.vault.azure.net/",
+        "AZURE_USERNAME": "mayuresh.vedak619@gmail.com"
       },
       "applicationUrl": "http://localhost:5000"
     }

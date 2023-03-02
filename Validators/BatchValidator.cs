@@ -7,7 +7,7 @@ namespace AssessmentAPI.Validators
     {
         public BatchValidator() 
         {
-            RuleFor(batch => batch.BusinessUnit).NotNull().NotEmpty();
+            RuleFor(batch => batch.BusinessUnit).NotNull().NotEmpty().WithMessage("Business Unit should not be null or empty");
             RuleForEach(x => x.Attritubes).ChildRules(orders =>
             {
                 orders.RuleForEach(x => x.Key).NotNull().NotEmpty();

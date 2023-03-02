@@ -8,9 +8,9 @@ namespace AssessmentAPI.Validators
     {
         public BatchDetailsResponseValidator() 
         {
-            RuleFor(batch => batch.BatchId).NotNull().NotEmpty();
-            RuleFor(batch => batch.BusinessUnit).NotNull().NotEmpty();
-            RuleFor(batch => batch.ExpiryDate).GreaterThan(DateTime.Now);
+            RuleFor(batch => batch.BatchId).NotNull().NotEmpty().WithMessage("Batch ID should not be null or empty");
+            RuleFor(batch => batch.BusinessUnit).NotNull().NotEmpty().WithMessage("Batch ID should not be null or empty");
+            RuleFor(batch => batch.ExpiryDate).GreaterThan(DateTime.Now).WithMessage("Expiry date should be greater than current date");
         }
     }
 }

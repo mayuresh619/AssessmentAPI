@@ -13,5 +13,10 @@
         public const string APPLICATIONINSIGHTS_TRACE_INFO = "ApplicationInsights.TraceInfo";
         public const string APPLICATIONINSIGHTS_TRACE_WARNING = "ApplicationInsights.TraceWarning";
         public const string APPLICATIONINSIGHTS_TRACE_ERROR = "ApplicationInsights.TraceError";
+        public const string APPLICATION_OCTET_STREAM = "application/octet-stream";
+        public const string STORAGE_ACCOUNT_CONNECTION_STRING = "StorageAccountConnectionString";
+        public const string FILE_ALREADY_EXIST = "File already exist in the batch";
+        public const string INVALID_FILE_NAME = "Invalid File Name";
+
     }
 }

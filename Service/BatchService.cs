@@ -2,6 +2,8 @@
 using AssessmentAPI.DataLayer;
 using AssessmentAPI.Logger;
 using AssessmentAPI.Models;
+using Azure.Storage.Blobs.Models;
+using Azure.Storage.Blobs;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
@@ -11,6 +13,8 @@ using System.Linq;
 using System.Net.NetworkInformation;
 using static AssessmentAPI.Models.BatchDetailsResponse;
 using static AssessmentAPI.Models.BatchRequest;
+using System.Text.RegularExpressions;
+using Path = System.IO.Path;
 
 namespace AssessmentAPI.Service
 {
@@ -24,6 +28,7 @@ namespace AssessmentAPI.Service
         private Guid _guid;
         private Batch _batch;
         private Attributes _attributes;
+        private BlobContainerClient _container;
 
         #endregion
 
@@ -34,6 +39,7 @@ namespace AssessmentAPI.Service
             _config = configuration;
             _logger = logger;
             _context = new AssessmentDBContext(_config);
+
         }
         #endregion
 
@@ -226,7 +232,156 @@ namespace AssessmentAPI.Service
             }
         }
 
+        /// <summary>
+        /// Add file details to the batch
+        /// </summary>
+        /// <param name="batchId">Batch ID</param>
+        /// <param name="fileName">Name of file</param>
+        /// <param name="mimeType">MIME Type</param>
+        /// <param name="fileSize">Size of file</param>
+        /// <returns></returns>
+        public bool AddFileDetails(string batchId, string fileName, string mimeType, double fileSize)
+        {
+            try
+            {
+                _logger.LogInfo($"Execution of {nameof(BatchService)}.{nameof(AddFileDetails)} method begin",
+                     ("Batch Id", batchId),
+                     ("File Name", fileName),
+                     ("MIME Type", mimeType),
+                     ("File Size", fileSize.ToString())
+                     );
+                var _fileDetails = new Files();
+                _fileDetails.FileName = fileName;
+                _fileDetails.BatchId = batchId;
+                _fileDetails.Mimetype = mimeType;
+                _fileDetails.FileSize = int.Parse(fileSize.ToString());
+                _fileDetails.Hash = generateHashCode();
 
+                _context.Files.Add(_fileDetails);
+                _context.SaveChanges();
+                _logger.LogInfo($"Execution of {nameof(BatchService)}.{nameof(AddFileDetails)} method end",
+                    ("File Details",JsonConvert.SerializeObject(_fileDetails)));
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Exception occured in {nameof(BatchService)}.{nameof(AddFileDetails)}",
+                     ("Batch Id", batchId),
+                     ("File Name", fileName),
+                     ("MIME Type", mimeType),
+                     ("File Size", fileSize.ToString())
+                    );
+                throw ex;
+            }
+        }
+
+        /// <summary>
+        /// Creates Storage container
+        /// </summary>
+        /// <param name="containerName">Name of storage container</param>
+        public void CreateStorageContainer(string containerName)
+        {
+            try
+            {
+                _logger.LogInfo($"Execution of {nameof(BatchService)}.{nameof(CreateStorageContainer)} method begin",
+                    ("Container Name", containerName)
+                    );
+                var connectionString = _config.GetValue<string>(BatchConstants.STORAGE_ACCOUNT_CONNECTION_STRING);
+                _container = new BlobContainerClient(connectionString, $"{containerName}-container");
+                _container.CreateIfNotExists(PublicAccessType.Blob);
+                _logger.LogInfo($"Execution of {nameof(BatchService)}.{nameof(CreateStorageContainer)} method end");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Exception occured in {nameof(BatchService)}.{nameof(CreateStorageContainer)}",
+                    ("Container Name", containerName)
+                    );
+                throw ex;
+            }
+        }
+
+        /// <summary>
+        /// Uploads file to container
+        /// </summary>
+        /// <param name="batchId">Batch ID</param>
+        /// <param name="fileName">Name of file</param>
+        /// <returns>boolean</returns>
+        public bool UploadFileToContainer(string batchId,string fileName)
+        {
+            try
+            {
+                _logger.LogInfo($"Execution of {nameof(BatchService)}.{nameof(UploadFileToContainer)} method begin",
+                    ("Batch ID", batchId),
+                    ("File Name", fileName)
+                    );
+                var _localFilePath = $"{Environment.CurrentDirectory}\\File\\sample.pdf";
+                BlobContainerClient container = new BlobContainerClient(_config.GetValue<string>(
+                    BatchConstants.STORAGE_ACCOUNT_CONNECTION_STRING), $"{batchId}-container");
+               
+                if(container.GetBlobs().Any(i=> i.Name == fileName))
+                {
+                    return false;
+                }
+                
+                BlobClient blobClient = container.GetBlobClient(fileName);
+                blobClient.Upload(_localFilePath, true);
+                _logger.LogInfo($"Execution of {nameof(BatchService)}.{nameof(UploadFileToContainer)} method end");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Exception occured in {nameof(BatchService)}.{nameof(UploadFileToContainer)}",
+                    ("Batch ID", batchId),
+                    ("File Name", fileName)
+                    );
+                throw ex;
+            }
+        }
+
+        /// <summary>
+        /// Is File Name Valid
+        /// </summary>
+        /// <param name="fileName">Name of file</param>
+        /// <returns>Boolean</returns>
+        public bool IsValidFilename(string fileName)
+        {
+            try
+            {
+                _logger.LogInfo($"Execution of {nameof(BatchService)}.{nameof(IsValidFilename)} method begin",
+                    ("File Name", fileName)
+                    );
+
+                if (fileName.ToCharArray().Any(i => Path.GetInvalidFileNameChars().Contains(i)))
+                {
+                    return false;
+                }
+
+                _logger.LogInfo($"Execution of {nameof(BatchService)}.{nameof(IsValidFilename)} method end");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Exception occured in {nameof(BatchService)}.{nameof(IsValidFilename)}",
+                    ("File Name", fileName)
+                    );
+                throw ex;
+            }
+        }
+
+        #endregion
+
+        #region Private methods
+
+        /// <summary>
+        /// To generate random hash code
+        /// </summary>
+        /// <returns></returns>
+        private string generateHashCode()
+        {
+            Random rnd = new Random();
+            return rnd.GetHashCode().ToString();
+        } 
+        
         #endregion
     }
 }
